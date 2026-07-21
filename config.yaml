@@ -1,0 +1,189 @@
+# ============================================================================
+# CF-mMIMO SIMULATION CONFIGURATION
+# ============================================================================
+
+# HEURISTIC ABLATION TOGGLES
+# Per-plane decision policy. Energy/power models are unchanged in every mode;
+# only the clustering / placement algorithm changes.
+#   comm_heuristic: v6      -> reuse-aware AP clustering (default)
+#                   unaware -> add best-channel APs until SE target met
+#   comp_heuristic: greedy    -> energy-min server + DVFS descent (default)
+#                   first_fit -> first server that fits at its f_max, no DVFS
+ablation:
+  comm_heuristic: v6
+  comp_heuristic: greedy
+
+# NETWORK PARAMETERS
+network:
+  # Area
+  area: 1000 # Simulation area side length (meters)
+  L: 50 # Number of candidate AP sites
+  K: 20 # Number of UEs (users)
+  N: 4 # Number of antennas per AP
+
+  # Experiment timeframe
+  experiment_duration_s: 5.0
+
+  # RF parameters
+  bandwidth: 20000000.0 # System bandwidth (Hz) - 20 MHz
+  carrier_frequency: 3.5 # Carrier frequency (GHz) - 3.5 GHz
+
+  # Heights
+  delta_h: 11 # Difference between AP height and UE height (meters)
+
+  # Channel parameters
+  tau_p: 20 # Pilot length (symbols)
+  tau_c: 200 # Coherence block length (symbols)
+  realizations: 20 # R~: reduced channel realizations used inside the H_c heuristic
+  realizations_final: 100 # R: channel realizations for the final SE evaluation
+
+  # Power control
+  p_k: 100.0 # Max UE uplink transmit power (mW)
+
+  # Heuristic Constraints
+  max_users_per_ap: 6          # Max number of UEs an AP can multiplex
+  min_channel_gain_db: -10.0      # Minimum raw gain over noise (dB) to consider an AP
+  max_aps_per_ue: 10              # Max number of APs that can serve a single UE
+
+# TASK PARAMETERS (profile-based generation)
+# Each profile defines data_size (bits) and processing_intensity (cycles/bit).
+task_profiles:
+  balanced:
+    count: 7
+    data_size_range: [80000000, 120000000]          # 80–120 Mbit
+    processing_intensity_range: [80, 120]           # cycles/bit (moderate)
+  comm_heavy:
+    count: 7
+    data_size_range: [200000000, 250000000]         # 200–250 Mbit (high upload)
+    processing_intensity_range: [10, 20]            # cycles/bit (low compute)
+  proc_heavy:
+    count: 6
+    data_size_range: [20000000, 45000000]           # 20–45 Mbit (low upload)
+    processing_intensity_range: [500, 600]          # cycles/bit (high compute)
+
+# Deadline reverse-engineering model
+# Nominal deadline = upload time at 100 Mbps + execution time at 4 cores, 3.0 GHz.
+# Final deadline is a random multiplicative skew around the nominal value.
+deadline_model:
+  nominal_upload_rate_mbps: 100
+  nominal_compute_cores: 4
+  nominal_compute_freq_ghz: 3.0
+  nominal_compute_b_s: 1.0
+  deadline_skew_min: 0.75
+  deadline_skew_max: 1.25
+
+# EDGE SERVER PARAMETERS
+edge_servers:
+  - id: "MEC-1"
+    capacity: 4                # physical cores; total_capacity_hz = capacity * f_max
+    freq_levels: 5             # discrete frequency levels between f_min and f_max (inclusive)
+    kappa: 1.0e-28
+    f_min_ghz: 1.0
+    f_max_ghz: 3.0
+    b_s: 0.7
+
+  - id: "MEC-2"
+    capacity: 4                # physical cores; total_capacity_hz = capacity * f_max
+    freq_levels: 5             # discrete frequency levels between f_min and f_max (inclusive)
+    kappa: 1.0e-28
+    f_min_ghz: 1.0
+    f_max_ghz: 3.0
+    b_s: 0.7
+
+  - id: "MEC-3"
+    capacity: 4                # physical cores; total_capacity_hz = capacity * f_max
+    freq_levels: 5             # discrete frequency levels between f_min and f_max (inclusive)
+    kappa: 1.0e-28
+    f_min_ghz: 1.0
+    f_max_ghz: 3.0
+    b_s: 0.7
+
+  - id: "MEC-4"
+    capacity: 4                # physical cores; total_capacity_hz = capacity * f_max
+    freq_levels: 5             # discrete frequency levels between f_min and f_max (inclusive)
+    kappa: 1.0e-28
+    f_min_ghz: 1.0
+    f_max_ghz: 3.0
+    b_s: 0.7
+
+  - id: "MEC-5"
+    capacity: 12
+    freq_levels: 5
+    kappa: 5.0e-28
+    f_min_ghz: 1.5
+    f_max_ghz: 4.5
+    b_s: 1.0
+
+  - id: "MEC-6"
+    capacity: 12
+    freq_levels: 5
+    kappa: 5.0e-28
+    f_min_ghz: 1.5
+    f_max_ghz: 4.5
+    b_s: 1.0
+
+  - id: "MEC-7"
+    capacity: 12
+    freq_levels: 5
+    kappa: 1.0e-27
+    f_min_ghz: 2.0
+    f_max_ghz: 4.7
+    b_s: 1.1
+
+  - id: "MEC-8"
+    capacity: 12
+    freq_levels: 5
+    kappa: 1.0e-27
+    f_min_ghz: 2.0
+    f_max_ghz: 4.7
+    b_s: 1.1
+
+  - id: "MEC-9"
+    capacity: 24
+    freq_levels: 5
+    kappa: 2.6e-27
+    f_min_ghz: 2.5
+    f_max_ghz: 5.4
+    b_s: 1.55
+
+  - id: "MEC-10"
+    capacity: 24
+    freq_levels: 5
+    kappa: 2.6e-27
+    f_min_ghz: 2.5
+    f_max_ghz: 5.4
+    b_s: 1.55
+
+# GOPS COMPUTATION PARAMETERS (OFDM / baseband processing)
+gops_params:
+  T_s: 0.00007143          # OFDM symbol period (s) — 30 kHz SCS, 20 MHz
+  N_DFT: 2048              # FFT size
+  N_used: 1200             # Used subcarriers (20 MHz)
+  f_s: 30720000.0          # Sampling rate (Hz) — 30.72 MHz
+
+comm_energy_params:
+  # CPU (centralized combining)
+  C_max_cpu_GOPS: 360       # CPU processor capacity (GOPS)
+  P_static_cpu_W: 41.6      # CPU static power (W)
+  slope_power_cpu_W: 148.0   # CPU load-dependent slope (W)
+  # AP (filtering + DFT + CE)
+  C_max_ap_GOPS: 180        # AP processor capacity (GOPS)
+  P_static_ap_W: 20.8       # AP static power (W)
+  slope_power_ap_W: 74.0    # AP load-dependent slope (W)
+
+# ANTENNA POWER PARAMETERS
+antenna_power_params:
+  P_antenna_W: 6.8          # Power per antenna (Watts)
+  sleep_fraction: 0.1       # Sleep-mode power as a fraction of active draw
+
+# EVALUATION PARAMETERS
+# Used to score a split vector: fitness = energy + lambda_penalty * (deadline violation seconds).
+evaluation:
+  lambda_penalty: 2000.0     # penalty coefficient λ (J per second of deadline violation)
+
+# RANDOM SEARCH PARAMETERS (run_comparison.py)
+random_search:
+  n_samples: 100             # number of random split vectors evaluated
+  seed: 42                   # random seed for reproducibility
+  a_min: 0.05                # minimum split value sampled
+  a_max: 0.95                # maximum split value sampled
