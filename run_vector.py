@@ -24,7 +24,7 @@ import argparse
 import yaml
 import numpy as np
 
-from joint_evaluator import get_or_build_snapshot, evaluate
+from joint_evaluator import get_or_build_snapshot, evaluate, plane_violation
 
 FEASIBILITY_TOL = 1e-3  # violations below this (seconds) are treated as feasible
 
@@ -72,7 +72,6 @@ def main():
     if a_vec.shape != (K,):
         parser.error(f"Split vector has length {a_vec.size}, but the scenario has K = {K} UEs.")
 
-    deadlines = np.array([t['deadline'] for t in tasks], dtype=float)
     r = evaluate(tasks, a_vec, snapshot, servers, params, cfg)
 
     comm_energy = float(r['energy_infra'])            # AP + CPU infrastructure
@@ -80,10 +79,10 @@ def main():
     comp_idle = float(r['edge_idle_energy'])          # edge computation (idle cores)
     comp_energy = comp_active + comp_idle
     total_energy = comm_energy + comp_energy
-    total_time = r['upload_times'] + r['exec_times']
-    penalty = lam * float(np.sum(np.maximum(0.0, total_time - deadlines)))
-    viol = float(np.sum(np.maximum(0.0, total_time - deadlines)))
-    n_feas = int(np.sum(total_time <= deadlines + FEASIBILITY_TOL))
+    violations = plane_violation(r)
+    viol = float(np.sum(violations))
+    penalty = lam * viol
+    n_feas = int(np.sum(violations <= FEASIBILITY_TOL))
 
     D_DCC = np.asarray(r['D_DCC'])
     cluster_sizes = D_DCC.sum(axis=0)
@@ -98,7 +97,8 @@ def main():
     print(f"  {'-'*3}-+-{'-'*11}-+-{'-'*4}-+-{'-'*8}-+-{'-'*6}-+-{'-'*6}-+-{'-'*3}-+-"
           f"{'-'*9}-+-{'-'*6}-+-{'-'*5}-+-{'-'*6}-+-{'-'*8}-+-{'-'*8}")
     for k, t in enumerate(tasks):
-        ok = total_time[k] <= t['deadline'] + FEASIBILITY_TOL
+        ok = (r['upload_times'][k] <= r['t_comm'][k] + FEASIBILITY_TOL
+              and r['exec_times'][k] <= r['t_proc'][k] + FEASIBILITY_TOL)
         asgn = assignments[k]
         srv = asgn['server_id'] if asgn else '-'
         cores = str(int(asgn['num_cores'])) if asgn else '-'

@@ -20,7 +20,7 @@ import argparse
 import yaml
 import numpy as np
 
-from joint_evaluator import get_or_build_snapshot, evaluate
+from joint_evaluator import get_or_build_snapshot, evaluate, plane_violation
 
 FEASIBILITY_TOL = 1e-3  # violations below this (seconds) are treated as feasible
 
@@ -46,7 +46,6 @@ def main():
     print("Building network snapshot...")
     snapshot, tasks, servers, params = get_or_build_snapshot(cfg)
     K = len(tasks)
-    deadlines = np.array([t['deadline'] for t in tasks], dtype=float)
 
     if args.a is not None:
         a_values = [args.a]
@@ -66,9 +65,9 @@ def main():
         comm_energy = float(r['energy_infra'])           # AP + CPU infrastructure
         comp_energy = float(np.sum(r['energy_comp'])) + float(r['edge_idle_energy'])
         total_energy = comm_energy + comp_energy
-        total_time = r['upload_times'] + r['exec_times']
-        penalty = lam * float(np.sum(np.maximum(0.0, total_time - deadlines)))
-        n_feas = int(np.sum(total_time <= deadlines + FEASIBILITY_TOL))
+        violations = plane_violation(r)
+        penalty = lam * float(np.sum(violations))
+        n_feas = int(np.sum(violations <= FEASIBILITY_TOL))
         active_aps = int(np.sum(np.asarray(r['D_DCC']).sum(axis=1) > 0))
         placed = [x for x in r['assignments'] if x is not None]
         cores = sum(int(x['num_cores']) for x in placed)

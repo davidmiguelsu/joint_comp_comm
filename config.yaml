@@ -50,23 +50,23 @@ network:
 task_profiles:
   balanced:
     count: 7
-    data_size_range: [80000000, 120000000]          # 80–120 Mbit
-    processing_intensity_range: [80, 120]           # cycles/bit (moderate)
+    data_size_range: [100000000, 150000000]         # 100–150 Mbit
+    processing_intensity_range: [100, 200]          # cycles/bit (moderate)
   comm_heavy:
     count: 7
-    data_size_range: [200000000, 250000000]         # 200–250 Mbit (high upload)
-    processing_intensity_range: [10, 20]            # cycles/bit (low compute)
+    data_size_range: [200000000, 300000000]         # 200–300 Mbit (high upload)
+    processing_intensity_range: [20, 60]            # cycles/bit (low compute)
   proc_heavy:
     count: 6
-    data_size_range: [20000000, 45000000]           # 20–45 Mbit (low upload)
-    processing_intensity_range: [500, 600]          # cycles/bit (high compute)
+    data_size_range: [20000000, 40000000]           # 20–40 Mbit (low upload)
+    processing_intensity_range: [400, 800]          # cycles/bit (high compute)
 
 # Deadline reverse-engineering model
-# Nominal deadline = upload time at 100 Mbps + execution time at 4 cores, 3.0 GHz.
+# Nominal deadline = upload time at 100 Mbps + execution time at 5 cores, 3.0 GHz.
 # Final deadline is a random multiplicative skew around the nominal value.
 deadline_model:
   nominal_upload_rate_mbps: 100
-  nominal_compute_cores: 4
+  nominal_compute_cores: 5
   nominal_compute_freq_ghz: 3.0
   nominal_compute_b_s: 1.0
   deadline_skew_min: 0.75
@@ -180,10 +180,3 @@ antenna_power_params:
 # Used to score a split vector: fitness = energy + lambda_penalty * (deadline violation seconds).
 evaluation:
   lambda_penalty: 2000.0     # penalty coefficient λ (J per second of deadline violation)
-
-# RANDOM SEARCH PARAMETERS (run_comparison.py)
-random_search:
-  n_samples: 100             # number of random split vectors evaluated
-  seed: 42                   # random seed for reproducibility
-  a_min: 0.05                # minimum split value sampled
-  a_max: 0.95                # maximum split value sampled

@@ -12,7 +12,15 @@ total infrastructure + computation energy subject to per-UE deadlines.
 For each user (UE) `k`, a split fraction `a_k ∈ [0, 1]` assigns `a_k · D_k`
 seconds to communication and `(1 − a_k) · D_k` seconds to computation, where
 `D_k` is the overall UE end-to-end deadline. The goal is to choose the split vector `a = (a_1, …, a_K)`
-that minimizes energy while minimizing deadline violations.
+that minimizes
+
+```
+E_comm + E_exec + λ · (v_comm + v_exec)
+```
+
+where `v_comm` is the upload overrun past `a_k · D_k` and `v_exec` is the
+execution overrun past `(1 − a_k) · D_k`, both summed over UEs, and
+`λ = 2000 J/s`.
 
 ## Repository structure
 
@@ -23,10 +31,10 @@ that minimizes energy while minimizing deadline violations.
 | `comm_energy_model.py`  | **Communication energy model** (AP power, antenna power).                                                                                         |
 | `edge_compute_model.py` | **Computation energy model** + the **edge-computation heuristic H_e** (server selection + DVFS).                                            |
 | `comm_heuristic.py`     | **Communication heuristic H_c** (reuse-aware AP clustering).                                                                                      |
-| `joint_evaluator.py`    | Builds the network+task snapshot and evaluates a split vector`a`: runs both heuristics and returns energy + violation (if any).                       |
+| `joint_evaluator.py`    | Builds the network+task snapshot and evaluates a split vector`a`: runs both heuristics and returns per-plane energy and per-plane deadline violations.                       |
 | `run_sweep.py`          | Evaluates a uniform split`a` over a range of values (or a single `a`).                                                                              |
 | `run_vector.py`         | Evaluates a custom per-UE split vector and prints a per-UE breakdown.                                                                                   |
-| `run_comparison.py`     | Results table comparing **Fair vs. Random Search**.                                                                                              |
+| `run_comparison.py`     | Evaluates the Fair split (`a_k = 0.5`) and prints a results table.                                                                               |
 
 ## Installation
 
@@ -53,14 +61,6 @@ If you have just downloaded the repository, follow this  workflow to get familia
    ```
 
    *What happens?* On the first run, the code generates the Cell-Free MIMO channels and user task profiles based on `config.yaml`, and caches this environment snapshot in the `data/` folder. It then evaluates both the communication ($H_c$) and computation ($H_e$) heuristics, returning the system's total energy consumption and (potential) violations.
-3. **Compare Strategies:**
-   The comparison script evaluates a uniform baseline against a random search optimization over the split vector space:
-
-   ```bash
-   python run_comparison.py
-   ```
-
-   It outputs a summary table.
 
 ## Detailed Usage
 
@@ -88,11 +88,23 @@ python run_vector.py --a 0.5,0.6,0.3,0.9,...   # K comma-separated values
 python run_vector.py --file my_split.txt        # or read values from a file
 ```
 
-**Comparison table** — Fair vs. Random Search:
+### Baselines used in the paper
 
-```bash
-python run_comparison.py
-```
+- **Fair:** `a_k = 0.5` for every UE (equal deadline partition). Reproducible
+  with `python run_sweep.py --a 0.5` or `python run_comparison.py`.
+- **Rule-based (log-q):** a workload-aware closed-form split,
+
+  ```
+  a_k = clip(0.8 - 0.6 * (ln q_k - ln q_min) / (ln q_max - ln q_min), 0.2, 0.8)
+  ```
+
+  where `q_k` is the UE's processing intensity (cycles/bit), and `q_min = 20`,
+  `q_max = 800` are fixed from the `task_profiles` ranges in `config.yaml` (not
+  from the current batch). Low-intensity (comm-heavy) UEs get more of their
+  deadline for communication; high-intensity (compute-heavy) UEs get more for
+  execution. It is also the warm-start mean of the CMA-ES in the paper. To
+  evaluate it, compute this vector and pass it to
+  `python run_vector.py --a <K comma-separated values>`.
 
 ## Configuration
 
@@ -111,13 +123,10 @@ All scenario parameters live in `config.yaml`:
 - `comm_energy_params:` / `antenna_power_params:` / `gops_params:` —
   communication energy-model coefficients.
 - `evaluation:` — penalty coefficient `lambda_penalty` used to score a split.
-- `random_search:` — number of samples, seed, and split bounds for the random
-  baseline in `run_comparison.py`.
 
 ## Reproducibility
 
-The network channel, task set, and random baseline are all seeded (see
-`random_search.seed` in `config.yaml` and the seed arguments to
+The network channel and task set are seeded (see the seed arguments to
 `get_or_build_snapshot` in `joint_evaluator.py`). The first run builds and
 caches a snapshot under `data/` (created automatically); subsequent runs reuse
 it.
