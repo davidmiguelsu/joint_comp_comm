@@ -557,3 +557,8 @@ def evaluate(
         'edge_idle_energy':  edge_idle_energy,
         'per_server_idle_energy': comp_result.get('per_server_idle_energy', np.zeros(len(server_specs))),
     }
+
+
+def plane_violation(r):
+    """Per-UE deadline violation (s), summed over planes: upload past a_k*D_k plus exec past (1-a_k)*D_k."""
+    return np.maximum(0.0, -r['surplus_comm']) + np.maximum(0.0, -r['surplus_comp'])
